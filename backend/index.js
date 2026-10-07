@@ -1,16 +1,25 @@
 const express = require("express");
 const cors = require("cors");
+const connectDB = require("./db/connectDB");
+const User = require("./models/User");
 
 const app = express();
 
 app.use(cors());
 app.use(express.json());
 
-app.get("/", (req, res) => {
-     res.json([
-        { id: 1, name: "Samira" },
-        { id: 2, name: "John" }
-    ]);
+connectDB()
+
+app.get("/users", async (req, res) => {
+  try {
+    const users = await User.find();
+
+    res.json(users);
+  } catch (error) {
+    res.status(500).json({
+      message: "Failed to fetch users"
+    });
+  }
 });
 
 app.listen(8000, () => {

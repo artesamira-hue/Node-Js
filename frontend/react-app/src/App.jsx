@@ -8,7 +8,7 @@ export const App = () => {
   const fetchAPI = async() => {
     try {
       setLoader(true)
-      const res = await fetch('http://localhost:8000/')
+      const res = await fetch('http://localhost:8000/users')
       const data = await res.json()
       setUser(data)
     } catch (err) {
