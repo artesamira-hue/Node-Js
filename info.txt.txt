@@ -93,3 +93,11 @@ Node.js basically says:
 
 so browser and nodejs both are enviromemts to run javascript
 The difference is that each environment provides different capabilities.
+-------------------------------------------------------------------
+Nodemon is a development tool for Node.js. It automatically restarts your Node application whenever it detects changes to your files.
+
+MongoDB - Stores the user information.
+
+bcrypt - Safely hashes and checks passwords.
+
+JWT - Proves to the backend that the user has successfully logged in.

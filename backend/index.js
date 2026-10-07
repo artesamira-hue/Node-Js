@@ -1,26 +1,24 @@
 const express = require("express");
 const cors = require("cors");
 const connectDB = require("./db/connectDB");
-const User = require("./models/User");
+
+const dotenv = require("dotenv");
+const authRoutes = require("./routes/authRoutes");
 
 const app = express();
 
 app.use(cors());
 app.use(express.json());
 
+//dotenv.config() loads environment variables from the .env file into process.env
+dotenv.config();
 connectDB()
 
-app.get("/users", async (req, res) => {
-  try {
-    const users = await User.find();
-
-    res.json(users);
-  } catch (error) {
-    res.status(500).json({
-      message: "Failed to fetch users"
-    });
-  }
+app.get("/", (req, res) => {
+  res.send("Server is running");
 });
+
+app.use("/api/auth", authRoutes);
 
 app.listen(8000, () => {
     console.log("Server running on port 8000");
