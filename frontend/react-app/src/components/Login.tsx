@@ -8,7 +8,8 @@ import {
     Link,
     Paper,
 } from "@mui/material";
-import { signUp, login } from "../api/apiCalls";
+import { useNavigate } from "react-router";
+import { signUp, login, forgotPassword } from "../api/apiCalls";
 import { useUserContext } from "../context/userContext.jsx";
 import { ToastContainer, toast } from "react-toastify";
 // @ts-ignore CSS side-effect imports do not have TypeScript declarations.
@@ -22,7 +23,9 @@ type FormData = {
 
 export const Login = () => {
     const [isNewUser, setIsNewUser] = useState(false);
+    const [isForgotPassword, setIsForgotPassword] = useState(false);
     const { loadProfile } = useUserContext();
+    const navigate = useNavigate();
 
     const defaultValues = {
         name: "",
@@ -62,7 +65,14 @@ export const Login = () => {
 
     const handleSignInAndLogin = async (data: FormData) => {
         try {
-            if (isNewUser) {
+            if (isForgotPassword) {
+                const response = await forgotPassword(data.email);
+                if (!response.resetLink) {
+                    throw new Error("The server did not return a password reset link.");
+                }
+                const resetUrl = new URL(response.resetLink);
+                navigate(`${resetUrl.pathname}${resetUrl.search}${resetUrl.hash}`);
+            } else if (isNewUser) {
                 await signUp(data);
                 toast.success("Account created successfully! Please log in.");
                 setIsNewUser(false);
@@ -114,7 +124,11 @@ export const Login = () => {
                         align="center"
                         sx={{ mb: 3 }}
                     >
-                        {isNewUser ? "Create an Account" : "Login"}
+                        {isForgotPassword
+                            ? "Forgot Password"
+                            : isNewUser
+                                ? "Create an Account"
+                                : "Login"}
                     </Typography>
 
                     <Box
@@ -126,7 +140,7 @@ export const Login = () => {
                             gap: 2,
                         }}
                     >
-                        {isNewUser && (
+                        {isNewUser && !isForgotPassword && (
                             <>
                                 <TextField
                                     type="text"
@@ -156,17 +170,21 @@ export const Login = () => {
                             </Typography>
                         )}
 
-                        <TextField
-                            type="password"
-                            label="Password"
-                            placeholder="Enter Password"
-                            fullWidth
-                            {...register('password', rules.password)}
-                        />
-                        {typeof errors.password?.message === "string" && (
-                            <Typography variant="caption" color="error">
-                                {errors.password.message}
-                            </Typography>
+                        {!isForgotPassword && (
+                            <>
+                                <TextField
+                                    type="password"
+                                    label="Password"
+                                    placeholder="Enter Password"
+                                    fullWidth
+                                    {...register('password', rules.password)}
+                                />
+                                {typeof errors.password?.message === "string" && (
+                                    <Typography variant="caption" color="error">
+                                        {errors.password.message}
+                                    </Typography>
+                                )}
+                            </>
                         )}
 
                         <Button
@@ -174,25 +192,68 @@ export const Login = () => {
                             type="submit"
                             fullWidth
                         >
-                            {isNewUser ? "Sign Up" : "Login"}
+                            {isForgotPassword
+                                ? "Send Reset Link"
+                                : isNewUser
+                                    ? "Sign Up"
+                                    : "Login"}
                         </Button>
                     </Box>
 
-                    <Typography align="center" sx={{ mt: 4 }}>
-                        {isNewUser ? "Already have an account? " : "No Account? "}
+                    {isForgotPassword ? (
+                        <>
+                            <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+                                The current backend prints the reset link in its terminal instead of
+                                sending an email.
+                            </Typography>
+                            <Typography align="center" sx={{ mt: 2 }}>
+                                <Link
+                                    component="button"
+                                    type="button"
+                                    onClick={() => {
+                                        setIsForgotPassword(false);
+                                        reset(defaultValues);
+                                    }}
+                                    underline="hover"
+                                >
+                                    Back to Login
+                                </Link>
+                            </Typography>
+                        </>
+                    ) : (
+                        <>
+                            {!isNewUser && (
+                                <Typography align="center" sx={{ mt: 2 }}>
+                                    <Link
+                                        component="button"
+                                        type="button"
+                                        onClick={() => {
+                                            setIsForgotPassword(true);
+                                            reset(defaultValues);
+                                        }}
+                                        underline="hover"
+                                    >
+                                        Forgot password?
+                                    </Link>
+                                </Typography>
+                            )}
+                            <Typography align="center" sx={{ mt: isNewUser ? 4 : 2 }}>
+                                {isNewUser ? "Already have an account? " : "No Account? "}
 
-                        <Link
-                            component="button"
-                            type="button"
-                            onClick={() => {
-                                setIsNewUser(prev => !prev);
-                                reset(defaultValues);
-                            }}
-                            underline="hover"
-                        >
-                            {isNewUser ? "Login" : "Create one"}
-                        </Link>
-                    </Typography>
+                                <Link
+                                    component="button"
+                                    type="button"
+                                    onClick={() => {
+                                        setIsNewUser(prev => !prev);
+                                        reset(defaultValues);
+                                    }}
+                                    underline="hover"
+                                >
+                                    {isNewUser ? "Login" : "Create one"}
+                                </Link>
+                            </Typography>
+                        </>
+                    )}
                 </Paper>
             </Box>
         </>
