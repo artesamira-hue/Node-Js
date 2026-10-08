@@ -1,0 +1,83 @@
+Frontend Project Details
+
+This file explains, in simple words, how the frontend was put together.
+
+Nodemon → watches your Node.js backend and automatically restarts the server when you change code.
+Vite → provides the React development environment and gives fast updates in the browser when you change React code.
+
+1. Create the project
+
+The frontend is the part of the app that people see and use. It was made
+with React and Vite.
+
+React helps build the pages and buttons. Vite helps run the app while it
+is being made.
+
+The project is in:
+    frontend/react-app
+
+2. Add the tools the app needs
+
+The project uses extra tools for common jobs:
+
+- Material UI gives us ready-made buttons, boxes, and text fields.
+- Axios lets the app talk to the backend.
+- React Hook Form helps collect and check what someone types.
+- React Toastify shows messages, such as "Login successful".
+
+These tools are listed in package.json.
+
+3. Start the app
+
+When the app starts, src/main.jsx opens the main page. index.html has a
+blank spot called "root" where the page is shown.
+
+4. Show the login page
+
+src/App.jsx is the main part of the app. It currently shows the Login
+page.
+
+5. Make the login and sign-up form
+
+The form is in:
+    src/components/Login.tsx
+
+It lets someone choose between:
+- Login: enter an email and password.
+- Sign Up: enter a name, email, and password to create an account.
+
+The form checks that the required details are filled in and that the
+email looks like an email address. The password must be at least six
+characters long.
+
+After someone submits the form, the app shows a success or error message.
+
+6. Connect the page to the backend
+
+The files in src/api help the frontend send information to the backend:
+
+- apiCalls.js sends the login and sign-up requests.
+- axiosInstance.js holds the backend address used by those requests.
+
+The backend address is currently:
+    http://localhost:8000/api
+
+The login and sign-up requests go to:
+    /auth/login
+    /auth/register
+
+The backend needs to be running for login and sign-up to work.
+
+7. Start the frontend
+
+Open a terminal in frontend/react-app and run:
+    npm run dev
+
+Open the web address shown in the terminal. Keep the backend running in
+another terminal if you want to try logging in or signing up.
+
+Useful commands:
+    npm run build   - prepare the app for putting online
+    npm run lint    - check the code for common mistakes
+
+Note: The app currently does not save the token returned after login.

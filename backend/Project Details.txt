@@ -1,0 +1,470 @@
+1. Create Node.js project
+
+We created a backend folder:
+========================================
+    backend/
+========================================
+
+Then:
+========================================
+</>Bash
+
+    npm init -y
+========================================
+
+This creates:
+========================================
+   package.json
+========================================
+package.json keeps information about your Node project and dependencies.
+
+..............................................................................................
+
+2. Install required packages
+
+We installed:
+========================================
+   npm install express mongoose cors dotenv bcryptjs jsonwebtoken
+========================================
+
+And:
+========================================
+   npm install --save-dev nodemon
+========================================
+
+What each package does
+Package          	Purpose
+express	            Creates the backend/server
+mongoose	        Connects Node.js to MongoDB
+cors	            CORS allows your frontend (localhost:5157) to communicate with your backend(localhost:8000) even though they use different ports.
+                    Frontend → 5157
+                    Backend → 8000
+                    CORS → allows communication between them ✅
+                    But if the backend is not running, CORS won't fix that. 
+dotenv	            Reads variables from .env
+bcryptjs	        Hashes and checks passwords
+jsonwebtoken	    Creates/verifies JWT tokens
+nodemon	            Automatically restarts server during development
+.............................................................................................
+
+3. Create .env
+
+We created:
+========================================
+   backend/
+└── .env
+========================================
+
+Example:
+======================================================================
+PORT=5000
+
+MONGO_URI=mongodb+srv://username:password@cluster.mongodb.net/loginApp
+
+JWT_SECRET=mySuperSecretKey123
+
+=========================================================================
+This contains configuration that we don't want to hard-code in our source code.
+we create jwt secret a static value it is added like a stamp to every jwt token created by the user it helps Node to verfiy if the token was really created by that user
+
+For example:
+========================================
+   process.env.JWT_SECRET
+========================================
+process is used to extract values from env file
+
+gets:
+========================================
+   mySuperSecretKey123
+========================================
+............................................................................................................................
+
+4. Create MongoDB connection
+
+We created:
+========================================
+   db/
+└── connectDB.js
+===================================================
+</> JavaScript
+const mongoose = require("mongoose");
+
+const connectDB = async () => {
+  try {
+    await mongoose.connect(process.env.MONGO_URI);
+
+    console.log("MongoDB connected");
+  } catch (error) {
+    console.log("MongoDB connection failed:", error.message);
+    process.exit(1);
+  }
+};
+
+module.exports = connectDB;
+========================================
+Purpose
+
+This connects:
+
+Node.js
+   ↓
+Mongoose
+   ↓
+MongoDB
+
+........................................................................................
+
+5. Create Express server
+
+We created:
+========================================
+index.js
+========================================
+
+This is the entry point of our backend.
+===============================================
+const express = require("express");
+const cors = require("cors");
+const dotenv = require("dotenv");
+
+const connectDB = require("./config/db");
+const authRoutes = require("./routes/authRoutes");
+
+dotenv.config();
+
+const app = express();
+
+connectDB();
+
+app.use(cors());
+app.use(express.json());
+
+app.get("/", (req, res) => {
+  res.send("Server is running");
+});
+
+app.use("/api/auth", authRoutes);
+
+const PORT = process.env.PORT || 5000;
+
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
+====================================================
+
+Important things happening here
+====================================================
+dotenv.config(); 
+====================================================
+Loads .env.
+
+====================================================
+connectDB();
+====================================================
+Connects MongoDB.
+
+====================================================
+app.use(cors());
+====================================================
+Allows frontend communication.
+
+====================================================
+app.use(express.json());
+====================================================
+Allows Express to understand JSON request bodies.
+
+====================================================
+app.use("/api/auth", authRoutes);
+====================================================
+Connects our authentication routes.
+
+.......................................................................................
+6. Create User Model
+
+We created:
+====================================================
+models/
+└── User.js
+
+</> JavaScript
+const mongoose = require("mongoose");
+
+const userSchema = new mongoose.Schema(
+  {
+    name: {
+      type: String,
+      required: true,
+    },
+
+    email: {
+      type: String,
+      required: true,
+      unique: true,
+    },
+
+    password: {
+      type: String,
+      required: true,
+    },
+  },
+  {
+    timestamps: true,
+  }
+);
+
+module.exports = mongoose.model("User", userSchema);
+====================================================
+This defines what a user looks like in MongoDB.
+
+User
+├── name
+├── email
+├── password
+├── createdAt
+└── updatedAt
+..........................................................................
+
+7. Create Controller
+Yes, you can put everything in index.js, especially for a small project. 👍
+
+But controllers are created to keep the code organized as the project grows.
+
+We created:
+====================================================
+controllers/
+└── authController.js
+====================================================
+The controller contains the actual business logic.
+
+For example:
+====================================================
+const User = require("../models/User");
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
+====================================================
+
+The controller handles:
+====================================================
+Register
+Login
+====================================================
+......................................................................................
+
+8. Register API
+
+We created:
+====================================================
+const registerUser = async (req, res) => {
+====================================================
+
+The frontend/Postman sends:
+====================================================
+{
+  "name": "Samira",
+  "email": "samira@gmail.com",
+  "password": "123456"
+}
+====================================================
+
+We extract it:
+====================================================
+const { name, email, password } = req.body;
+====================================================
+
+Then check whether the user already exists:
+====================================================
+const existingUser = await User.findOne({ email });
+====================================================
+
+If the user doesn't exist, we hash the password:
+====================================================
+const hashedPassword = await bcrypt.hash(password, 10);
+====================================================
+
+Then create the user:
+====================================================
+const user = await User.create({
+  name,
+  email,
+  password: hashedPassword,
+});
+====================================================
+
+So:
+
+123456
+   ↓
+bcrypt
+   ↓
+$2b$10$......
+   ↓
+MongoDB
+
+We never store the plain password.
+
+.................................................................................
+
+9. Login API
+
+For login, we receive:
+====================================================
+{
+  "email": "samira@gmail.com",
+  "password": "123456"
+}
+====================================================
+
+First:
+====================================================
+const user = await User.findOne({ email });
+====================================================
+We find the user in MongoDB.
+
+Then:
+====================================================
+const isPasswordCorrect = await bcrypt.compare(
+  password,
+  user.password
+);
+
+
+This compares:
+User's entered password
+          ↓
+       bcrypt
+          ↓
+Password stored in DB
+====================================================
+
+If correct, we create a JWT:
+====================================================
+const token = jwt.sign(
+  {
+    userId: user._id,
+    email: user.email,
+  },
+  process.env.JWT_SECRET,
+  {
+    expiresIn: "1h",
+  }
+);
+====================================================
+
+Then return:
+
+{
+  "message": "Login successful",
+  "token": "eyJhbGciOiJIUzI1Ni...",
+  "user": {
+    "id": "...",
+    "name": "Samira",
+    "email": "samira@gmail.com"
+  }
+}
+
+.............................................................................
+
+10. Create Auth Routes
+
+We created:
+====================================================
+routes/
+└── authRoutes.js
+====================================================
+
+Inside:
+====================================================
+router.post("/register", registerUser);
+router.post("/login", loginUser);
+====================================================
+This connects the URL to the controller.
+
+----------------------------------------------------------------------------------------------
+
+11. Why /api/auth?
+
+In index.js:
+====================================================
+app.use("/api/auth", authRoutes);
+====================================================
+
+And in authRoutes.js:
+====================================================
+router.post("/register", registerUser);
+router.post("/login", loginUser);
+====================================================
+
+Express combines them.
+
+Therefore:
+/api/auth + /register
+        ↓
+POST /api/auth/register
+
+and:
+
+/api/auth + /login
+        ↓
+POST /api/auth/login
+
+So our APIs are:
+
+POST http://localhost:5000/api/auth/register
+
+POST http://localhost:5000/api/auth/login
+..................................................................................
+
+12. JWT
+
+JWT is used to identify an authenticated user.
+
+The flow is:
+
+Email + Password
+       ↓
+    MongoDB
+       ↓
+bcrypt.compare()
+       ↓
+   Correct?
+       ↓
+      YES
+       ↓
+   jwt.sign()
+       ↓
+     Token
+
+The secret:
+
+process.env.JWT_SECRET
+
+is used to sign the token.
+
+Later we'll use the same secret to verify it.
+
+...................................................................................
+14. Current backend structure
+
+So right now your project should look approximately like:
+
+backend/
+│
+├── node_modules/
+│
+├── db/
+│   └── connectDB.js
+│
+├── controllers/
+│   └── authController.js
+│
+├── models/
+│   └── User.js
+│
+├── routes/
+│   └── authRoutes.js
+│
+├── .env
+├── .gitignore
+├── package.json
+├── package-lock.json
+└── index.js
