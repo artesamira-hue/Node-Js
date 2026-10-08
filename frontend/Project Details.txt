@@ -32,12 +32,31 @@ These tools are listed in package.json.
 When the app starts, src/main.jsx opens the main page. index.html has a
 blank spot called "root" where the page is shown.
 
-4. Show the login page
+4. Keep the user's profile in one shared place
 
-src/App.jsx is the main part of the app. It currently shows the Login
-page.
+We created userContext.jsx to keep the signed-in user's profile and
+functions that work with it.
 
-5. Make the login and sign-up form
+When the app starts, a useEffect in the context checks whether a login
+token is saved in the browser:
+
+- If there is no token, the profile stays empty.
+- If there is a token, the context calls the backend's profile API.
+- When the API returns the user's details, the context saves them in
+  profile.
+
+5. Show Login or Profile
+
+App.jsx checks the profile in the context:
+
+- If profile has user details, App shows the Profile page.
+- If profile is empty, App shows the Login page.
+
+React Router is used to move between pages without reloading the whole
+website. It also opens the reset-password page using the token in the
+reset link.
+
+6. Make the login and sign-up form
 
 The form is in:
     src/components/Login.tsx
@@ -52,7 +71,7 @@ characters long.
 
 After someone submits the form, the app shows a success or error message.
 
-6. Connect the page to the backend
+7. Connect the page to the backend
 
 The files in src/api help the frontend send information to the backend:
 
@@ -68,7 +87,42 @@ The login and sign-up requests go to:
 
 The backend needs to be running for login and sign-up to work.
 
-7. Start the frontend
+8. Show the profile and log out
+
+The Profile page reads the user's details from userContext and shows the
+name and email.
+
+The Profile page is in:
+    src/components/Profile.jsx
+
+The profile and its related functions are kept in:
+    src/context/userContext.jsx
+
+The Log out button calls the logout function from userContext. That
+function removes the saved token and clears the profile. App then shows
+the Login page.
+
+9. Forgot and reset a password
+
+On the Login page, choosing "Forgot password?" changes the form so it
+shows only the email field and the "Send Reset Link" button.
+
+When the button is clicked:
+
+1. The frontend calls the backend's forgot-password API with the email.
+2. The backend creates a reset link and returns it in its response. For
+   now, the backend also prints the link in its terminal instead of
+   sending it by email.
+3. The frontend gets the link from the response and uses React Router to
+   open the reset-password page.
+
+The reset-password page has two fields: "New password" and "Confirm new
+password". The frontend checks that both entries match. The backend also
+checks that the new password is not the same as the old password. If the
+new password is accepted, the backend saves it and the page shows a
+success message. Choose "Back to Login" to return to the Login page.
+
+10. Start the frontend
 
 Open a terminal in frontend/react-app and run:
     npm run dev
@@ -80,4 +134,5 @@ Useful commands:
     npm run build   - prepare the app for putting online
     npm run lint    - check the code for common mistakes
 
-Note: The app currently does not save the token returned after login.
+Keep the backend running in another terminal to use login, sign-up,
+profile, forgot-password, and reset-password features.

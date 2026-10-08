@@ -468,3 +468,276 @@ backend/
 ├── package.json
 ├── package-lock.json
 └── index.js
+................................................................................
+
+15. JWT Middleware
+
+We created:
+========================================
+middleware/
+└── authMiddleware.js
+========================================
+The purpose of middleware is to check whether the user has a valid JWT token before allowing access to protected APIs.
+
+==========================================================================
+</> JavaScript
+
+const jwt = require("jsonwebtoken");
+
+const authMiddleware = (req, res, next) => {
+  try {
+    //The frontend sends: Authorization: Bearer JWT_TOKEN
+    //Middleware gets the token:
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return res.status(401).json({
+        message: "No token provided",
+      });
+    }
+
+    const token = authHeader.split(" ")[1];
+
+    const decoded = jwt.verify( //It verifies the token:
+      token,
+      process.env.JWT_SECRET
+    );
+
+    req.user = decoded; //after verfiying the info is saved in user
+
+    next(); // it tells express The middleware is finished. Continue to the next function."
+
+  } catch (error) {
+    return res.status(401).json({
+      message: "Invalid or expired token",
+    });
+  }
+};
+
+module.exports = authMiddleware;
+==========================================================================
+
+16. Protected API
+
+inside authController 
+==========================================
+</> JavaScript
+
+const getProfile = async (req, res) => {
+  try {
+    const user = await User.findById(
+      req.user.userId
+    ).select("-password"); // our user detail contains name, email, password so we dont want to send password 
+
+    res.status(200).json({
+      user,
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      message: error.message,
+    });
+  }
+};
+================================================
+...................................................................
+
+17. Protected Route
+
+In authRoutes.js:
+==============================================================
+const authMiddleware = require("../middleware/authMiddleware");
+===============================================================
+
+Then:
+============================================
+router.get(
+  "/profile",
+  authMiddleware,
+  getProfile
+);
+============================
+
+This means:
+
+GET /profile
+      ↓
+authMiddleware
+      ↓
+getProfile
+
+The controller runs only if the token is valid.
+...................................................................
+
+18. Forgot Password
+
+The flow is:
+
+User enters email
+        ↓
+Backend finds user
+        ↓
+Generate reset token
+        ↓
+Save token in MongoDB
+        ↓
+Create reset link
+        ↓
+Send email
+        ↓
+User clicks link
+        ↓
+Reset password
+.................................................................
+
+19. Add Reset Token Fields to User Model
+
+In User.js:
+==================================
+resetPasswordToken: {
+  type: String,
+},
+
+resetPasswordExpires: {
+  type: Date,
+},
+======================================
+
+These fields store:
+
+resetPasswordToken
+        ↓
+Temporary token
+
+resetPasswordExpires
+        ↓
+Token expiry time
+
+...................................................................
+
+20. Forgot Password API
+
+const forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    // Find user
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      return res.status(400).json({
+        message: "User not found",
+      });
+    }
+
+    // Generate random token
+    //We use Node's built-in crypto module.
+    const resetToken = crypto.randomBytes(32).toString("hex");
+
+    // Save token and expiry in database
+    user.resetPasswordToken = resetToken;
+    user.resetPasswordExpires = Date.now() + 15 * 60 * 1000; // 15 minutes
+
+    await user.save();
+
+    // Temporary: show reset link in terminal
+    const resetLink = `http://localhost:5173/reset-password/${resetToken}`;
+
+    console.log("Password Reset Link:", resetLink);
+
+    res.status(200).json({
+      message: "Password reset link generated",
+      resetLink,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: error.message,
+    });
+  }
+};
+
+Why Do We Need Reset Token?
+to create a rest link to verify that the user itself wants to change the password by clicking that link and not someone else can change password just by entering the email
+
+.....................................................................................
+
+21. Reset API
+========================================================
+const resetPassword = async (req, res) => {
+  try {
+    const { token } = req.params;
+    const { password } = req.body;
+
+    // Find user with valid token
+    const user = await User.findOne({
+      resetPasswordToken: token,
+      resetPasswordExpires: { $gt: Date.now() },
+    });
+
+    if (!user) {
+      return res.status(400).json({
+        message: "Invalid or expired reset token",
+      });
+    }
+    
+    //check if new password is same as old
+    const isSamePassword = await bcrypt.compare( password, user.password ); 
+
+    if (isSamePassword) { 
+      return res.status(400).json({ message: "New password cannot be the same as your old password", }); 
+    }
+
+    // Hash new password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Update password
+    user.password = hashedPassword;
+
+    // Remove reset token
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpires = undefined;
+
+    await user.save();
+
+    res.status(200).json({
+      message: "Password reset successful",
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: error.message,
+    });
+  }
+};
+
+Get token and new password
+Token comes from the reset link.
+Password comes from the user.
+
+Find the user
+Checks whether the token is valid.
+Also checks whether the token has not expired.
+
+Invalid/expired token
+If no user is found → return 400 error.
+
+Check old password
+Compares the new password with the old password.
+If same → reject the request.
+
+Hash new password
+Uses bcrypt to securely hash the new password.
+
+Update password
+Saves the new hashed password.
+
+Remove reset token
+Clears the token and expiry so it cannot be reused.
+
+Success
+Returns "Password reset successful" ✅
+
+Error handling
+If something unexpected happens → returns 500 error.
+====================================================================
+
+22. Add API to authRoutes so it can be accessed
