@@ -9,13 +9,20 @@ import {
     Paper,
 } from "@mui/material";
 import { signUp, login } from "../api/apiCalls";
+import { useUserContext } from "../context/userContext.jsx";
 import { ToastContainer, toast } from "react-toastify";
 // @ts-ignore CSS side-effect imports do not have TypeScript declarations.
 import "react-toastify/dist/ReactToastify.css";
 
+type FormData = {
+    name: string;
+    email: string;
+    password: string;
+};
+
 export const Login = () => {
     const [isNewUser, setIsNewUser] = useState(false);
-    const [error, setError] = useState([])
+    const { loadProfile } = useUserContext();
 
     const defaultValues = {
         name: "",
@@ -53,23 +60,31 @@ export const Login = () => {
         },
     };
 
-    const handleSignInAndLogin = async (data) => {
+    const handleSignInAndLogin = async (data: FormData) => {
         try {
             if (isNewUser) {
                 await signUp(data);
-                toast.success("Account created successfully!");
+                toast.success("Account created successfully! Please log in.");
+                setIsNewUser(false);
+                reset(defaultValues);
             } else {
                 const { name, ...loginData } = data;
+                const authResponse = await login(loginData);
 
-                await login(loginData);
+                if (!authResponse.token) {
+                    throw new Error("The server did not return an authentication token.");
+                }
+
+                sessionStorage.setItem("token", authResponse.token);
+                await loadProfile();
 
                 toast.success("Login successful!");
+                reset(defaultValues);
             }
-            reset(defaultValues);
         } catch (error) {
             const message = (error as { response?: { data?: { message?: string } } })
                 ?.response?.data?.message;
-            toast.error(message || "Something went wrong!");
+            toast.error(message || (error instanceof Error ? error.message : "Something went wrong!"));
         }
     };
 
