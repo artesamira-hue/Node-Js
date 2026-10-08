@@ -13,6 +13,14 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  resetPasswordToken: { 
+    //Stores the temporary token associated with the password-reset request.
+    type: String, 
+  }, 
+  resetPasswordExpires: { 
+    //Stores when that token should stop working.
+    type: Date, 
+  },
   },
   //timestamps: true is a Mongoose option that automatically adds two fields to every object
   // createdAt
